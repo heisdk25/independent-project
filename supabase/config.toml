@@ -1,1 +1,13 @@
 project_id = "wmmhkbrinbsbwbaxxzlk"
+
+[functions.upload-document]
+verify_jwt = false
+
+[functions.study-chat]
+verify_jwt = false
+
+[functions.generate-study-materials]
+verify_jwt = false
+
+[functions.analyze-pyq]
+verify_jwt = false

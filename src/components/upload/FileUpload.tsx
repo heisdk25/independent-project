@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, File, X, FileText, Image, CheckCircle } from "lucide-react";
+import { Upload, File, X, FileText, Image, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface UploadedFile {
   id: string;
@@ -13,18 +14,22 @@ interface UploadedFile {
 
 interface FileUploadProps {
   onFilesChange?: (files: File[]) => void;
+  onUpload?: (file: File) => Promise<any>;
   accept?: string;
   multiple?: boolean;
   maxFiles?: number;
   className?: string;
+  isUploading?: boolean;
 }
 
 export const FileUpload = ({
   onFilesChange,
-  accept = ".pdf,.docx,.doc,.png,.jpg,.jpeg",
+  onUpload,
+  accept = ".pdf,.docx,.doc,.png,.jpg,.jpeg,.txt,.md",
   multiple = true,
   maxFiles = 10,
   className,
+  isUploading = false,
 }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -40,28 +45,25 @@ export const FileUpload = ({
   }, []);
 
   const processFiles = useCallback(
-    (files: FileList | null) => {
+    async (files: FileList | null) => {
       if (!files) return;
 
-      const newFiles: UploadedFile[] = Array.from(files)
-        .slice(0, maxFiles - uploadedFiles.length)
-        .map((file) => ({
+      const filesToProcess = Array.from(files).slice(0, maxFiles - uploadedFiles.length);
+      
+      for (const file of filesToProcess) {
+        const uploadedFile: UploadedFile = {
           id: Math.random().toString(36).substr(2, 9),
           file,
           progress: 0,
-          status: "uploading" as const,
-        }));
+          status: "uploading",
+        };
 
-      setUploadedFiles((prev) => [...prev, ...newFiles]);
+        setUploadedFiles((prev) => [...prev, uploadedFile]);
 
-      // Simulate upload progress
-      newFiles.forEach((uploadedFile) => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 30;
-          if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
+        try {
+          if (onUpload) {
+            // Real upload with backend
+            await onUpload(file);
             setUploadedFiles((prev) =>
               prev.map((f) =>
                 f.id === uploadedFile.id
@@ -69,19 +71,47 @@ export const FileUpload = ({
                   : f
               )
             );
+            toast.success(`${file.name} uploaded successfully`);
           } else {
-            setUploadedFiles((prev) =>
-              prev.map((f) =>
-                f.id === uploadedFile.id ? { ...f, progress } : f
-              )
-            );
+            // Simulate upload for demo
+            let progress = 0;
+            const interval = setInterval(() => {
+              progress += Math.random() * 30;
+              if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                setUploadedFiles((prev) =>
+                  prev.map((f) =>
+                    f.id === uploadedFile.id
+                      ? { ...f, progress: 100, status: "complete" }
+                      : f
+                  )
+                );
+              } else {
+                setUploadedFiles((prev) =>
+                  prev.map((f) =>
+                    f.id === uploadedFile.id ? { ...f, progress } : f
+                  )
+                );
+              }
+            }, 200);
           }
-        }, 200);
-      });
+        } catch (error) {
+          console.error("Upload error:", error);
+          setUploadedFiles((prev) =>
+            prev.map((f) =>
+              f.id === uploadedFile.id
+                ? { ...f, status: "error" }
+                : f
+            )
+          );
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
 
-      onFilesChange?.(newFiles.map((f) => f.file));
+      onFilesChange?.(filesToProcess);
     },
-    [maxFiles, uploadedFiles.length, onFilesChange]
+    [maxFiles, uploadedFiles.length, onFilesChange, onUpload]
   );
 
   const handleDrop = useCallback(
@@ -97,6 +127,7 @@ export const FileUpload = ({
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       processFiles(e.target.files);
+      e.target.value = ''; // Reset input
     },
     [processFiles]
   );
@@ -121,7 +152,8 @@ export const FileUpload = ({
           "relative border-2 border-dashed rounded-xl p-8 transition-all duration-300 cursor-pointer",
           isDragging
             ? "border-primary bg-primary/5 shadow-glow"
-            : "border-border hover:border-primary/50 hover:bg-muted/50"
+            : "border-border hover:border-primary/50 hover:bg-muted/50",
+          isUploading && "pointer-events-none opacity-70"
         )}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
@@ -132,6 +164,7 @@ export const FileUpload = ({
           multiple={multiple}
           onChange={handleFileInput}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          disabled={isUploading}
         />
         <div className="flex flex-col items-center justify-center text-center space-y-4">
           <motion.div
@@ -139,17 +172,21 @@ export const FileUpload = ({
             transition={{ type: "spring", stiffness: 300 }}
             className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-card"
           >
-            <Upload className="w-8 h-8 text-primary-foreground" />
+            {isUploading ? (
+              <Loader2 className="w-8 h-8 text-primary-foreground animate-spin" />
+            ) : (
+              <Upload className="w-8 h-8 text-primary-foreground" />
+            )}
           </motion.div>
           <div>
             <p className="text-lg font-semibold font-display text-foreground">
-              Drop your documents here
+              {isUploading ? "Uploading..." : "Drop your documents here"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              or click to browse (PDF, DOCX, Images)
+              or click to browse (PDF, DOCX, TXT, Images)
             </p>
           </div>
-          <Button variant="hero-outline" size="sm">
+          <Button variant="hero-outline" size="sm" disabled={isUploading}>
             Choose Files
           </Button>
         </div>
@@ -172,10 +209,19 @@ export const FileUpload = ({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-card border shadow-soft"
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg bg-card border shadow-soft",
+                    uploadedFile.status === "error" && "border-destructive/50 bg-destructive/5"
+                  )}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-primary" />
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center",
+                    uploadedFile.status === "error" ? "bg-destructive/10" : "bg-primary/10"
+                  )}>
+                    <Icon className={cn(
+                      "w-5 h-5",
+                      uploadedFile.status === "error" ? "text-destructive" : "text-primary"
+                    )} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate text-foreground">
@@ -186,6 +232,11 @@ export const FileUpload = ({
                         <div className="flex items-center gap-1 text-xs text-secondary">
                           <CheckCircle className="w-3 h-3" />
                           Complete
+                        </div>
+                      ) : uploadedFile.status === "error" ? (
+                        <div className="flex items-center gap-1 text-xs text-destructive">
+                          <X className="w-3 h-3" />
+                          Failed
                         </div>
                       ) : (
                         <>
