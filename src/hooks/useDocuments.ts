@@ -12,6 +12,15 @@ interface Document {
   category: string;
   extracted_text: string | null;
   created_at: string;
+  subject?: string | null;
+  semester?: number | null;
+  academic_year?: string | null;
+}
+
+interface PYQMetadata {
+  subject: string;
+  semester: number;
+  academicYear: string;
 }
 
 export const useDocuments = (category: string = 'general') => {
@@ -42,7 +51,7 @@ export const useDocuments = (category: string = 'general') => {
     }
   }, [user, category]);
 
-  const uploadDocument = useCallback(async (file: File) => {
+  const uploadDocument = useCallback(async (file: File, metadata?: PYQMetadata) => {
     if (!user || !session) {
       toast.error('Please sign in to upload documents');
       return null;
@@ -55,6 +64,13 @@ export const useDocuments = (category: string = 'general') => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('category', category);
+      
+      // Add PYQ metadata if provided
+      if (metadata) {
+        formData.append('subject', metadata.subject);
+        formData.append('semester', metadata.semester.toString());
+        formData.append('academic_year', metadata.academicYear);
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-document`,

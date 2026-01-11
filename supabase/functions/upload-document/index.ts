@@ -64,6 +64,12 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const categoryInput = formData.get("category") as string || "general";
+    
+    // PYQ metadata
+    const subject = formData.get("subject") as string | null;
+    const semesterStr = formData.get("semester") as string | null;
+    const academicYear = formData.get("academic_year") as string | null;
+    const semester = semesterStr ? parseInt(semesterStr, 10) : null;
 
     // Validate file
     if (!file) {
@@ -140,18 +146,25 @@ serve(async (req) => {
     }
 
     // Store document metadata in database
+    const insertData: Record<string, unknown> = {
+      filename: file.name.substring(0, 255), // Limit filename length
+      file_path: filePath,
+      file_type: fileType,
+      file_size: file.size,
+      extracted_text: extractedText,
+      category: category,
+      session_id: userId, // Keep for backwards compatibility
+      user_id: userId,
+    };
+
+    // Add PYQ metadata if provided
+    if (subject) insertData.subject = subject;
+    if (semester) insertData.semester = semester;
+    if (academicYear) insertData.academic_year = academicYear;
+
     const { data: docData, error: dbError } = await serviceClient
       .from("documents")
-      .insert({
-        filename: file.name.substring(0, 255), // Limit filename length
-        file_path: filePath,
-        file_type: fileType,
-        file_size: file.size,
-        extracted_text: extractedText,
-        category: category,
-        session_id: userId, // Keep for backwards compatibility
-        user_id: userId,
-      })
+      .insert(insertData)
       .select()
       .single();
 

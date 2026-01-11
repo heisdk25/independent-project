@@ -19,7 +19,9 @@ interface Prediction {
   probability: number;
 }
 
-interface PYQAnalysis {
+interface SubjectAnalysis {
+  subject: string;
+  semester: number;
   topicFrequency: TopicFrequency[];
   topicDistribution: TopicDistribution[];
   predictions: {
@@ -30,9 +32,26 @@ interface PYQAnalysis {
   studyRecommendation: string;
 }
 
+interface YearData {
+  year: string;
+  topics: TopicFrequency[];
+}
+
+interface SubjectComparison {
+  subject: string;
+  semester: number;
+  yearData: YearData[];
+}
+
+export interface PYQAnalysisResult {
+  subjectAnalyses: SubjectAnalysis[];
+  comparisons: SubjectComparison[];
+  timelines: SubjectComparison[];
+}
+
 export const usePYQAnalysis = () => {
   const { session } = useAuth();
-  const [analysis, setAnalysis] = useState<PYQAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<PYQAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const analyzeDocuments = useCallback(async () => {

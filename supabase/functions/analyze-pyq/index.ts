@@ -58,10 +58,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch PYQ documents for this user
+    // Fetch PYQ documents for this user with metadata
     const { data: documents, error: dbError } = await serviceClient
       .from("documents")
-      .select("filename, extracted_text, file_type")
+      .select("filename, extracted_text, file_type, subject, semester, academic_year")
       .eq("user_id", userId)
       .eq("category", "pyq");
 
@@ -80,28 +80,62 @@ serve(async (req) => {
       );
     }
 
-    // Build context from documents (limit size)
-    let documentContext = documents.map((doc, i) => 
-      `[Question Paper ${i + 1}: ${doc.filename}]\n${(doc.extracted_text || "").substring(0, 20000)}`
-    ).join("\n\n");
+    // Group documents by subject and semester
+    const groupedDocs = documents.reduce((acc, doc) => {
+      const key = `${doc.subject || 'Unknown'}_${doc.semester || 0}`;
+      if (!acc[key]) {
+        acc[key] = {
+          subject: doc.subject || 'Unknown Subject',
+          semester: doc.semester || 1,
+          documents: [],
+          years: new Set<string>()
+        };
+      }
+      acc[key].documents.push(doc);
+      if (doc.academic_year) {
+        acc[key].years.add(doc.academic_year);
+      }
+      return acc;
+    }, {} as Record<string, { subject: string; semester: number; documents: typeof documents; years: Set<string> }>);
 
-    if (documentContext.length > 50000) {
-      documentContext = documentContext.substring(0, 50000) + "\n[Content truncated...]";
+    // Build context with subject/semester/year info
+    let documentContext = "";
+    for (const [, group] of Object.entries(groupedDocs)) {
+      documentContext += `\n\n=== SUBJECT: ${group.subject} | SEMESTER: ${group.semester} ===\n`;
+      for (const doc of group.documents) {
+        documentContext += `\n[Year: ${doc.academic_year || 'Unknown'} | File: ${doc.filename}]\n`;
+        documentContext += (doc.extracted_text || "").substring(0, 15000);
+      }
     }
 
-    const prompt = `Analyze the following Previous Year Question papers and provide:
+    if (documentContext.length > 60000) {
+      documentContext = documentContext.substring(0, 60000) + "\n[Content truncated...]";
+    }
 
-1. Topic Frequency Analysis - List each topic that appears and how many times
-2. Topic Distribution - Calculate percentage weightage of different topic areas
-3. Predictions for upcoming exams:
-   - CT-1 (first cycle test) - top 3 predicted topics with probability
-   - CT-2 (second cycle test) - top 3 predicted topics with probability  
-   - End Semester - top 5 predicted topics with probability
+    const subjectList = Object.values(groupedDocs).map(g => `${g.subject} (Sem ${g.semester})`).join(", ");
+
+    const prompt = `Analyze the following Previous Year Question papers organized by subject, semester, and year.
+
+SUBJECTS FOUND: ${subjectList}
+
+For EACH subject-semester combination, provide:
+1. Topic Frequency Analysis - List each topic and how many times it appeared
+2. Topic Distribution - Calculate percentage weightage of topic areas
+3. Year-over-year comparison - How topics changed across years
+4. Predictions for upcoming exams:
+   - CT-1: top 3 predicted topics with probability
+   - CT-2: top 3 predicted topics with probability  
+   - End Semester: top 5 predicted topics with probability
+5. Personalized study recommendation for each subject
 
 PREVIOUS YEAR QUESTIONS:
 ${documentContext}
 
-Important: Base all analysis ONLY on the provided question papers. If content is insufficient, indicate what additional papers would help.`;
+IMPORTANT: 
+- Analyze EACH subject separately
+- Include year-by-year data for comparative analysis
+- Base predictions on historical patterns within each subject
+- Provide specific, actionable study recommendations`;
 
     // Call Lovable AI with structured output
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -115,9 +149,11 @@ Important: Base all analysis ONLY on the provided question papers. If content is
         messages: [
           { 
             role: "system", 
-            content: `You are an expert exam analyst specializing in predicting exam topics from Previous Year Questions (PYQs). 
-            
-IMPORTANT DISCLAIMER: All predictions are based on historical trends and pattern analysis. They are not guaranteed and should be used as a supplementary study guide. Always prepare all syllabus topics comprehensively.` 
+            content: `You are an expert exam analyst helping university students prepare for exams by analyzing Previous Year Questions (PYQs).
+
+You understand Indian university exam patterns including CT-1, CT-2, and End Semester exams. Provide practical, actionable insights.
+
+DISCLAIMER: All predictions are based on historical trends. Always prepare all syllabus topics comprehensively.` 
           },
           { role: "user", content: prompt }
         ],
@@ -125,81 +161,161 @@ IMPORTANT DISCLAIMER: All predictions are based on historical trends and pattern
           {
             type: "function",
             function: {
-              name: "analyze_pyq",
-              description: "Analyze PYQ and generate predictions",
+              name: "analyze_pyq_comprehensive",
+              description: "Comprehensive PYQ analysis with subject-wise breakdown",
               parameters: {
                 type: "object",
                 properties: {
-                  topicFrequency: {
+                  subjectAnalyses: {
                     type: "array",
+                    description: "Analysis for each subject-semester combination",
                     items: {
                       type: "object",
                       properties: {
-                        topic: { type: "string" },
-                        frequency: { type: "number" },
-                        percentage: { type: "number" }
+                        subject: { type: "string" },
+                        semester: { type: "number" },
+                        topicFrequency: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              topic: { type: "string" },
+                              frequency: { type: "number" },
+                              percentage: { type: "number" }
+                            },
+                            required: ["topic", "frequency", "percentage"]
+                          }
+                        },
+                        topicDistribution: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              name: { type: "string" },
+                              value: { type: "number" }
+                            },
+                            required: ["name", "value"]
+                          }
+                        },
+                        predictions: {
+                          type: "object",
+                          properties: {
+                            ct1: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  topic: { type: "string" },
+                                  probability: { type: "number" }
+                                },
+                                required: ["topic", "probability"]
+                              }
+                            },
+                            ct2: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  topic: { type: "string" },
+                                  probability: { type: "number" }
+                                },
+                                required: ["topic", "probability"]
+                              }
+                            },
+                            endsem: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  topic: { type: "string" },
+                                  probability: { type: "number" }
+                                },
+                                required: ["topic", "probability"]
+                              }
+                            }
+                          },
+                          required: ["ct1", "ct2", "endsem"]
+                        },
+                        studyRecommendation: { type: "string" }
                       },
-                      required: ["topic", "frequency", "percentage"]
+                      required: ["subject", "semester", "topicFrequency", "topicDistribution", "predictions", "studyRecommendation"]
                     }
                   },
-                  topicDistribution: {
+                  comparisons: {
                     type: "array",
+                    description: "Year-over-year comparison for each subject",
                     items: {
                       type: "object",
                       properties: {
-                        name: { type: "string" },
-                        value: { type: "number" }
+                        subject: { type: "string" },
+                        semester: { type: "number" },
+                        yearData: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              year: { type: "string" },
+                              topics: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    topic: { type: "string" },
+                                    frequency: { type: "number" },
+                                    percentage: { type: "number" }
+                                  },
+                                  required: ["topic", "frequency", "percentage"]
+                                }
+                              }
+                            },
+                            required: ["year", "topics"]
+                          }
+                        }
                       },
-                      required: ["name", "value"]
+                      required: ["subject", "semester", "yearData"]
                     }
                   },
-                  predictions: {
-                    type: "object",
-                    properties: {
-                      ct1: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            topic: { type: "string" },
-                            probability: { type: "number" }
-                          },
-                          required: ["topic", "probability"]
+                  timelines: {
+                    type: "array",
+                    description: "Timeline data for trend visualization",
+                    items: {
+                      type: "object",
+                      properties: {
+                        subject: { type: "string" },
+                        semester: { type: "number" },
+                        yearData: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              year: { type: "string" },
+                              topics: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    topic: { type: "string" },
+                                    frequency: { type: "number" },
+                                    percentage: { type: "number" }
+                                  },
+                                  required: ["topic", "frequency", "percentage"]
+                                }
+                              }
+                            },
+                            required: ["year", "topics"]
+                          }
                         }
                       },
-                      ct2: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            topic: { type: "string" },
-                            probability: { type: "number" }
-                          },
-                          required: ["topic", "probability"]
-                        }
-                      },
-                      endsem: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            topic: { type: "string" },
-                            probability: { type: "number" }
-                          },
-                          required: ["topic", "probability"]
-                        }
-                      }
-                    },
-                    required: ["ct1", "ct2", "endsem"]
-                  },
-                  studyRecommendation: { type: "string" }
+                      required: ["subject", "semester", "yearData"]
+                    }
+                  }
                 },
-                required: ["topicFrequency", "topicDistribution", "predictions", "studyRecommendation"]
+                required: ["subjectAnalyses", "comparisons", "timelines"]
               }
             }
           }
         ],
-        tool_choice: { type: "function", function: { name: "analyze_pyq" } }
+        tool_choice: { type: "function", function: { name: "analyze_pyq_comprehensive" } }
       }),
     });
 

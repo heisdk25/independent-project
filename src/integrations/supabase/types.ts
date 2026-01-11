@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       documents: {
         Row: {
+          academic_year: string | null
           category: string
           created_at: string
           extracted_text: string | null
@@ -24,11 +25,14 @@ export type Database = {
           file_type: string
           filename: string
           id: string
+          semester: number | null
           session_id: string
+          subject: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          academic_year?: string | null
           category?: string
           created_at?: string
           extracted_text?: string | null
@@ -37,11 +41,14 @@ export type Database = {
           file_type: string
           filename: string
           id?: string
+          semester?: number | null
           session_id: string
+          subject?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          academic_year?: string | null
           category?: string
           created_at?: string
           extracted_text?: string | null
@@ -50,7 +57,9 @@ export type Database = {
           file_type?: string
           filename?: string
           id?: string
+          semester?: number | null
           session_id?: string
+          subject?: string | null
           updated_at?: string
           user_id?: string | null
         }
