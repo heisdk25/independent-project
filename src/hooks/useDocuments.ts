@@ -12,9 +12,9 @@ interface Document {
   category: string;
   extracted_text: string | null;
   created_at: string;
-  subject?: string | null;
-  semester?: number | null;
-  academic_year?: string | null;
+  subject: string | null;
+  semester: number | null;
+  academic_year: string | null;
 }
 
 interface PYQMetadata {
