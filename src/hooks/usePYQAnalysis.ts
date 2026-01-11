@@ -78,7 +78,39 @@ export const usePYQAnalysis = () => {
       }
 
       if (data.success && data.data) {
-        setAnalysis(data.data);
+        const rawData = data.data;
+        
+        // Handle both structured and flat response formats
+        let result: PYQAnalysisResult;
+        
+        if (rawData.subjectAnalyses && Array.isArray(rawData.subjectAnalyses)) {
+          // Already in correct format
+          result = rawData;
+        } else if (rawData.topicFrequency || rawData.topicDistribution || rawData.predictions) {
+          // Flat format - wrap in array structure
+          const singleAnalysis: SubjectAnalysis = {
+            subject: rawData.subject || "General",
+            semester: rawData.semester || 1,
+            topicFrequency: rawData.topicFrequency || [],
+            topicDistribution: rawData.topicDistribution || [],
+            predictions: rawData.predictions || { ct1: [], ct2: [], endsem: [] },
+            studyRecommendation: rawData.studyRecommendation || "",
+          };
+          
+          result = {
+            subjectAnalyses: [singleAnalysis],
+            comparisons: rawData.comparisons || [],
+            timelines: rawData.timelines || [],
+          };
+        } else {
+          result = {
+            subjectAnalyses: [],
+            comparisons: [],
+            timelines: [],
+          };
+        }
+        
+        setAnalysis(result);
         toast.success("Analysis complete!");
       }
     } catch (error) {
