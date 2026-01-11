@@ -1,31 +1,38 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
-  id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
 }
 
 interface ChatInterfaceProps {
+  messages: Message[];
+  isLoading: boolean;
+  onSendMessage: (message: string) => Promise<void> | Promise<string>;
+  onClear?: () => void;
   placeholder?: string;
   className?: string;
-  onSendMessage?: (message: string) => Promise<string>;
+  emptyStateTitle?: string;
+  emptyStateDescription?: string;
 }
 
 export const ChatInterface = ({
+  messages,
+  isLoading,
+  onSendMessage,
+  onClear,
   placeholder = "Ask a question about your documents...",
   className,
-  onSendMessage,
+  emptyStateTitle = "Start a Conversation",
+  emptyStateDescription = "Upload your documents and ask me anything. I'll only answer based on your uploaded content.",
 }: ChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,36 +48,9 @@ export const ChatInterface = ({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Math.random().toString(36).substr(2, 9),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    const message = input.trim();
     setInput("");
-    setIsLoading(true);
-
-    try {
-      // Simulate AI response for now
-      const response = onSendMessage
-        ? await onSendMessage(userMessage.content)
-        : "I'm your AI study assistant. Upload documents and I'll help you analyze them! This is a demo response - connect to Lovable Cloud to enable real AI capabilities.";
-
-      const assistantMessage: Message = {
-        id: Math.random().toString(36).substr(2, 9),
-        role: "assistant",
-        content: response,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error("Error sending message:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    await onSendMessage(message);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -82,6 +62,16 @@ export const ChatInterface = ({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
+      {/* Header with Clear Button */}
+      {messages.length > 0 && onClear && (
+        <div className="flex justify-end p-2 border-b">
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            <Trash2 className="w-4 h-4 mr-1" />
+            Clear Chat
+          </Button>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
@@ -90,17 +80,17 @@ export const ChatInterface = ({
               <Bot className="w-8 h-8 text-primary-foreground" />
             </div>
             <h3 className="text-xl font-display font-semibold text-foreground mb-2">
-              Start a Conversation
+              {emptyStateTitle}
             </h3>
             <p className="text-muted-foreground max-w-md">
-              Upload your documents and ask me anything. I'll only answer based on your uploaded content.
+              {emptyStateDescription}
             </p>
           </div>
         ) : (
           <AnimatePresence>
-            {messages.map((message) => (
+            {messages.map((message, index) => (
               <motion.div
-                key={message.id}
+                key={index}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
@@ -122,7 +112,13 @@ export const ChatInterface = ({
                       : "bg-card border shadow-soft rounded-bl-md"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.role === "assistant" ? (
+                    <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown>{message.content || "..."}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
@@ -134,7 +130,7 @@ export const ChatInterface = ({
           </AnimatePresence>
         )}
 
-        {isLoading && (
+        {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
