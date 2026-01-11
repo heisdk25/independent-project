@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, HelpCircle, CreditCard, GitBranch, ListChecks } from "lucide-react";
+import { Brain, HelpCircle, CreditCard, GitBranch, ListChecks, Loader2, RefreshCw } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { FileUpload } from "@/components/upload/FileUpload";
 import { Quiz } from "@/components/quiz/Quiz";
@@ -10,77 +10,54 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useDocuments } from "@/hooks/useDocuments";
-
-const sampleQuestions = [
-  {
-    id: "1",
-    question: "What is the primary function of mitochondria in a cell?",
-    type: "mcq" as const,
-    options: [
-      "Protein synthesis",
-      "Energy production (ATP)",
-      "Cell division",
-      "Waste removal",
-    ],
-    correctAnswer: "Energy production (ATP)",
-  },
-  {
-    id: "2",
-    question: "Which process converts glucose to pyruvate?",
-    type: "mcq" as const,
-    options: ["Glycolysis", "Krebs cycle", "Oxidative phosphorylation", "Fermentation"],
-    correctAnswer: "Glycolysis",
-  },
-  {
-    id: "3",
-    question: "Name the organelle responsible for photosynthesis.",
-    type: "short" as const,
-    correctAnswer: "Chloroplast",
-  },
-];
-
-const sampleFlashcards = [
-  {
-    id: "1",
-    question: "What is Osmosis?",
-    answer: "The movement of water molecules from a region of high water concentration to a region of low water concentration through a selectively permeable membrane.",
-  },
-  {
-    id: "2",
-    question: "Define Homeostasis",
-    answer: "The maintenance of a constant internal environment in living organisms despite changes in external conditions.",
-  },
-  {
-    id: "3",
-    question: "What is ATP?",
-    answer: "Adenosine Triphosphate - the primary energy currency of the cell, used to power cellular processes.",
-  },
-];
-
-const conceptFlowchart = `flowchart TD
-    A[Cell Biology] --> B[Cell Structure]
-    A --> C[Cell Function]
-    B --> D[Organelles]
-    B --> E[Cell Membrane]
-    C --> F[Metabolism]
-    C --> G[Cell Division]
-    D --> H[Mitochondria]
-    D --> I[Nucleus]
-    F --> J[Respiration]
-    F --> K[Photosynthesis]
-`;
+import { useStudyMaterials } from "@/hooks/useStudyMaterials";
 
 const NotesPage = () => {
   const [activeTab, setActiveTab] = useState("upload");
-  const [isGenerating, setIsGenerating] = useState(false);
   const { documents, uploadDocument, isLoading: isUploading } = useDocuments("notes");
+  const { 
+    isLoading: isGenerating, 
+    quiz, 
+    flashcards, 
+    summary, 
+    flowchart,
+    generateMaterials 
+  } = useStudyMaterials();
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
+  const handleGenerateQuiz = async () => {
+    try {
+      await generateMaterials("quiz");
       setActiveTab("quiz");
-    }, 1500);
+    } catch (err) {
+      // Error already handled in hook
+    }
+  };
+
+  const handleGenerateFlashcards = async () => {
+    try {
+      await generateMaterials("flashcards");
+      setActiveTab("flashcards");
+    } catch (err) {
+      // Error already handled in hook
+    }
+  };
+
+  const handleGenerateConcepts = async () => {
+    try {
+      await generateMaterials("flowchart");
+      setActiveTab("concepts");
+    } catch (err) {
+      // Error already handled in hook
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    try {
+      await generateMaterials("summary");
+      setActiveTab("summary");
+    } catch (err) {
+      // Error already handled in hook
+    }
   };
 
   return (
@@ -141,18 +118,31 @@ const NotesPage = () => {
                     <CardHeader>
                       <CardTitle>Upload Your Study Notes</CardTitle>
                       <CardDescription>
-                        Upload PDFs, images, or documents of your notes to generate study materials
+                        Upload PDFs, images, or documents of your notes ({documents.length} uploaded)
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <FileUpload onUpload={uploadDocument} isUploading={isUploading} />
                       {documents.length > 0 && (
-                        <div className="flex flex-wrap gap-4">
-                          <Button variant="hero" onClick={handleGenerate} disabled={isGenerating}>
-                            {isGenerating ? "Generating..." : "Generate Quiz & Flashcards"}
+                        <div className="flex flex-wrap gap-3">
+                          <Button variant="hero" onClick={handleGenerateQuiz} disabled={isGenerating}>
+                            {isGenerating ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              "Generate Quiz"
+                            )}
                           </Button>
-                          <Button variant="hero-outline" onClick={() => setActiveTab("concepts")}>
+                          <Button variant="hero-outline" onClick={handleGenerateFlashcards} disabled={isGenerating}>
+                            Generate Flashcards
+                          </Button>
+                          <Button variant="hero-outline" onClick={handleGenerateConcepts} disabled={isGenerating}>
                             Create Concept Map
+                          </Button>
+                          <Button variant="hero-outline" onClick={handleGenerateSummary} disabled={isGenerating}>
+                            Generate Summary
                           </Button>
                         </div>
                       )}
@@ -167,10 +157,52 @@ const NotesPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="max-w-2xl mx-auto"
                 >
-                  <Quiz
-                    questions={sampleQuestions}
-                    title="Cell Biology Quiz"
-                  />
+                  {quiz && quiz.length > 0 ? (
+                    <div className="space-y-4">
+                      <Quiz questions={quiz} title="Quiz from Your Notes" />
+                      <div className="text-center">
+                        <Button 
+                          variant="outline" 
+                          onClick={handleGenerateQuiz} 
+                          disabled={isGenerating}
+                          className="gap-2"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                          Generate New Quiz
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Card variant="elevated">
+                      <CardContent className="py-12">
+                        <div className="text-center space-y-4">
+                          <HelpCircle className="w-12 h-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <h3 className="font-semibold text-foreground mb-2">No Quiz Generated Yet</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Upload your notes and generate a quiz to test your knowledge.
+                            </p>
+                            {documents.length > 0 ? (
+                              <Button variant="hero" onClick={handleGenerateQuiz} disabled={isGenerating}>
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Generate Quiz"
+                                )}
+                              </Button>
+                            ) : (
+                              <Button variant="hero-outline" onClick={() => setActiveTab("upload")}>
+                                Upload Notes First
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </motion.div>
               </TabsContent>
 
@@ -180,17 +212,60 @@ const NotesPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="max-w-xl mx-auto"
                 >
-                  <Card variant="elevated">
-                    <CardHeader>
-                      <CardTitle>Study Flashcards</CardTitle>
-                      <CardDescription>
-                        Click to flip • Use arrows to navigate
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Flashcards cards={sampleFlashcards} />
-                    </CardContent>
-                  </Card>
+                  {flashcards && flashcards.length > 0 ? (
+                    <Card variant="elevated">
+                      <CardHeader>
+                        <CardTitle>Study Flashcards</CardTitle>
+                        <CardDescription>
+                          Click to flip • Use arrows to navigate
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Flashcards cards={flashcards} />
+                        <div className="text-center pt-4">
+                          <Button 
+                            variant="outline" 
+                            onClick={handleGenerateFlashcards} 
+                            disabled={isGenerating}
+                            className="gap-2"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                            Generate New Flashcards
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card variant="elevated">
+                      <CardContent className="py-12">
+                        <div className="text-center space-y-4">
+                          <CreditCard className="w-12 h-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <h3 className="font-semibold text-foreground mb-2">No Flashcards Yet</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Generate flashcards from your uploaded notes.
+                            </p>
+                            {documents.length > 0 ? (
+                              <Button variant="hero" onClick={handleGenerateFlashcards} disabled={isGenerating}>
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Generate Flashcards"
+                                )}
+                              </Button>
+                            ) : (
+                              <Button variant="hero-outline" onClick={() => setActiveTab("upload")}>
+                                Upload Notes First
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </motion.div>
               </TabsContent>
 
@@ -199,17 +274,60 @@ const NotesPage = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Card variant="elevated">
-                    <CardHeader>
-                      <CardTitle>Concept Map</CardTitle>
-                      <CardDescription>
-                        Visual representation of key concepts and their relationships
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <MermaidDiagram chart={conceptFlowchart} />
-                    </CardContent>
-                  </Card>
+                  {flowchart ? (
+                    <Card variant="elevated">
+                      <CardHeader>
+                        <CardTitle>{flowchart.title || "Concept Map"}</CardTitle>
+                        <CardDescription>
+                          Visual representation of key concepts and their relationships
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <MermaidDiagram chart={flowchart.mermaidCode} />
+                        <div className="text-center pt-4">
+                          <Button 
+                            variant="outline" 
+                            onClick={handleGenerateConcepts} 
+                            disabled={isGenerating}
+                            className="gap-2"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                            Generate New Concept Map
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card variant="elevated">
+                      <CardContent className="py-12">
+                        <div className="text-center space-y-4">
+                          <GitBranch className="w-12 h-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <h3 className="font-semibold text-foreground mb-2">No Concept Map Yet</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Generate a visual concept map from your notes.
+                            </p>
+                            {documents.length > 0 ? (
+                              <Button variant="hero" onClick={handleGenerateConcepts} disabled={isGenerating}>
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Create Concept Map"
+                                )}
+                              </Button>
+                            ) : (
+                              <Button variant="hero-outline" onClick={() => setActiveTab("upload")}>
+                                Upload Notes First
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </motion.div>
               </TabsContent>
 
@@ -218,57 +336,109 @@ const NotesPage = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Card variant="elevated">
-                    <CardHeader>
-                      <CardTitle>Exam-Oriented Summary</CardTitle>
-                      <CardDescription>
-                        Key points and important concepts for exam preparation
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                          <h4 className="font-display font-semibold text-foreground mb-2">
-                            Important Topics
-                          </h4>
-                          <ul className="space-y-2 text-muted-foreground">
-                            <li className="flex items-start gap-2">
-                              <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                              Cell structure and organelle functions
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                              ATP synthesis and cellular respiration
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
-                              Membrane transport mechanisms
-                            </li>
-                          </ul>
-                        </div>
+                  {summary ? (
+                    <Card variant="elevated">
+                      <CardHeader>
+                        <CardTitle>Exam-Oriented Summary</CardTitle>
+                        <CardDescription>
+                          Key points and important concepts for exam preparation
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-6">
+                          {summary.importantTopics && summary.importantTopics.length > 0 && (
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                              <h4 className="font-display font-semibold text-foreground mb-2">
+                                Important Topics
+                              </h4>
+                              <ul className="space-y-2 text-muted-foreground">
+                                {summary.importantTopics.map((topic, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                                    {topic}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
 
-                        <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/20">
-                          <h4 className="font-display font-semibold text-foreground mb-2">
-                            Key Definitions
-                          </h4>
-                          <div className="space-y-3 text-sm">
-                            <div>
-                              <span className="font-medium text-foreground">Mitochondria:</span>
-                              <span className="text-muted-foreground"> The powerhouse of the cell, responsible for ATP production through cellular respiration.</span>
+                          {summary.keyDefinitions && summary.keyDefinitions.length > 0 && (
+                            <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/20">
+                              <h4 className="font-display font-semibold text-foreground mb-2">
+                                Key Definitions
+                              </h4>
+                              <div className="space-y-3 text-sm">
+                                {summary.keyDefinitions.map((def, i) => (
+                                  <div key={i}>
+                                    <span className="font-medium text-foreground">{def.term}:</span>
+                                    <span className="text-muted-foreground"> {def.definition}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div>
-                              <span className="font-medium text-foreground">Osmosis:</span>
-                              <span className="text-muted-foreground"> Passive movement of water across a semi-permeable membrane.</span>
+                          )}
+
+                          {summary.revisionPoints && summary.revisionPoints.length > 0 && (
+                            <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
+                              <h4 className="font-display font-semibold text-foreground mb-2">
+                                Quick Revision Points
+                              </h4>
+                              <ul className="space-y-2 text-muted-foreground text-sm">
+                                {summary.revisionPoints.map((point, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <span className="font-medium text-accent shrink-0">{i + 1}.</span>
+                                    {point}
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
+                          )}
+
+                          <div className="text-center pt-4">
+                            <Button 
+                              variant="outline" 
+                              onClick={handleGenerateSummary} 
+                              disabled={isGenerating}
+                              className="gap-2"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                              Generate New Summary
+                            </Button>
                           </div>
                         </div>
-
-                        <p className="text-sm text-muted-foreground italic text-center">
-                          Upload your notes to generate a personalized exam summary
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card variant="elevated">
+                      <CardContent className="py-12">
+                        <div className="text-center space-y-4">
+                          <ListChecks className="w-12 h-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <h3 className="font-semibold text-foreground mb-2">No Summary Yet</h3>
+                            <p className="text-muted-foreground mb-4">
+                              Generate an exam-oriented summary from your notes.
+                            </p>
+                            {documents.length > 0 ? (
+                              <Button variant="hero" onClick={handleGenerateSummary} disabled={isGenerating}>
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  "Generate Summary"
+                                )}
+                              </Button>
+                            ) : (
+                              <Button variant="hero-outline" onClick={() => setActiveTab("upload")}>
+                                Upload Notes First
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </motion.div>
               </TabsContent>
             </Tabs>
