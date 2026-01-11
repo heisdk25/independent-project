@@ -9,6 +9,7 @@ import { MermaidDiagram } from "@/components/mermaid/MermaidDiagram";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { useDocuments } from "@/hooks/useDocuments";
 
 const sampleQuestions = [
   {
@@ -70,13 +71,9 @@ const conceptFlowchart = `flowchart TD
 `;
 
 const NotesPage = () => {
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [activeTab, setActiveTab] = useState("upload");
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleFilesChange = (files: File[]) => {
-    setUploadedFiles((prev) => [...prev, ...files]);
-  };
+  const { documents, uploadDocument, isLoading: isUploading } = useDocuments("notes");
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -148,8 +145,8 @@ const NotesPage = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <FileUpload onFilesChange={handleFilesChange} />
-                      {uploadedFiles.length > 0 && (
+                      <FileUpload onUpload={uploadDocument} isUploading={isUploading} />
+                      {documents.length > 0 && (
                         <div className="flex flex-wrap gap-4">
                           <Button variant="hero" onClick={handleGenerate} disabled={isGenerating}>
                             {isGenerating ? "Generating..." : "Generate Quiz & Flashcards"}

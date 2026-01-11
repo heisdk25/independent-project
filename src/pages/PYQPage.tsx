@@ -6,6 +6,7 @@ import { FileUpload } from "@/components/upload/FileUpload";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { useDocuments } from "@/hooks/useDocuments";
 import {
   BarChart,
   Bar,
@@ -58,13 +59,9 @@ const pieData = [
 const COLORS = ["#0ea5e9", "#14b8a6", "#f59e0b", "#ef4444"];
 
 const PYQPage = () => {
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [activeTab, setActiveTab] = useState("upload");
   const [selectedExam, setSelectedExam] = useState<"ct1" | "ct2" | "endsem">("ct1");
-
-  const handleFilesChange = (files: File[]) => {
-    setUploadedFiles((prev) => [...prev, ...files]);
-  };
+  const { documents, uploadDocument, isLoading: isUploading } = useDocuments("pyq");
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,17 +120,12 @@ const PYQPage = () => {
                     <CardContent className="space-y-6">
                       <div>
                         <h4 className="text-sm font-medium mb-3 text-foreground">Previous Year Question Papers</h4>
-                        <FileUpload onFilesChange={handleFilesChange} />
-                      </div>
-                      
-                      <div className="pt-4 border-t">
-                        <h4 className="text-sm font-medium mb-3 text-foreground">Course Syllabus (Optional)</h4>
-                        <FileUpload onFilesChange={handleFilesChange} maxFiles={1} />
+                        <FileUpload onUpload={uploadDocument} isUploading={isUploading} />
                       </div>
 
-                      {uploadedFiles.length > 0 && (
+                      {documents.length > 0 && (
                         <Button variant="hero" onClick={() => setActiveTab("analysis")}>
-                          Analyze {uploadedFiles.length} Document{uploadedFiles.length > 1 ? "s" : ""}
+                          Analyze {documents.length} Document{documents.length > 1 ? "s" : ""}
                         </Button>
                       )}
                     </CardContent>
