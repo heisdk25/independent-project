@@ -1,198 +1,323 @@
-import { motion } from "framer-motion";
-import { FileText, Brain, TrendingUp, Sparkles, Upload, Zap } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { FileText, Brain, TrendingUp, Upload, Zap, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
-import { FeatureCard } from "@/components/cards/FeatureCard";
-import { FileUpload } from "@/components/upload/FileUpload";
 import { Link } from "react-router-dom";
-import heroIllustration from "@/assets/hero-illustration.png";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-const features = [
-  {
-    title: "Research Paper Analysis",
-    description: "Upload research papers and get AI-powered summaries, methodology flowcharts, and instant answers.",
-    icon: FileText,
-    href: "/research",
-    gradient: "primary" as const,
-  },
-  {
-    title: "Exam Notes Assistant",
-    description: "Transform your notes into quizzes, flashcards, and concept maps for effective revision.",
-    icon: Brain,
-    href: "/notes",
-    gradient: "secondary" as const,
-  },
-  {
-    title: "PYQ Analysis & Prediction",
-    description: "Analyze previous year questions to predict high-probability topics for upcoming exams.",
-    icon: TrendingUp,
-    href: "/pyq",
-    gradient: "accent" as const,
-  },
-];
+gsap.registerPlugin(ScrollTrigger);
 
 const Index = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll();
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  
+  const opacity = useTransform(smoothProgress, [0, 0.2], [1, 0]);
+  const scale = useTransform(smoothProgress, [0, 0.2], [1, 0.8]);
+  const y = useTransform(smoothProgress, [0, 0.3], [0, -100]);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Animate floating shapes
+      gsap.to(".float-1", {
+        y: -30,
+        x: 20,
+        rotation: 5,
+        duration: 3,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut"
+      });
+
+      gsap.to(".float-2", {
+        y: 30,
+        x: -20,
+        rotation: -5,
+        duration: 4,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut"
+      });
+
+      gsap.to(".float-3", {
+        y: -20,
+        x: -15,
+        rotation: 3,
+        duration: 3.5,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut"
+      });
+
+      // Feature cards stagger animation
+      gsap.from(".feature-card", {
+        scrollTrigger: {
+          trigger: ".feature-section",
+          start: "top 80%",
+          toggleActions: "play none none none"
+        },
+        y: 100,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.2,
+        ease: "power3.out"
+      });
+
+      // Stats counter animation
+      gsap.from(".stat-item", {
+        scrollTrigger: {
+          trigger: ".stats-section",
+          start: "top 80%",
+        },
+        scale: 0.5,
+        opacity: 0,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "back.out(1.7)"
+      });
+
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <div className="min-h-screen gradient-hero">
+    <div ref={containerRef} className="relative overflow-hidden bg-background">
       <Header />
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 md:pt-40 md:pb-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border mb-6">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">
-                  AI-Powered Study Platform
-                </span>
-              </div>
-            </motion.div>
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="float-1 absolute top-20 right-20 w-64 h-64 rounded-full bg-foreground/5 border-2 border-foreground/20" />
+        <div className="float-2 absolute bottom-40 left-10 w-96 h-96 rounded-full bg-foreground/5 border border-foreground/20" />
+        <div className="float-3 absolute top-1/2 right-1/3 w-48 h-48 rounded-full bg-foreground/5 border-2 border-foreground/20" />
+        <div className="float-1 absolute bottom-1/4 right-1/4 w-32 h-32 rounded-full bg-foreground/10 border border-foreground/30" />
+      </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-6xl lg:text-7xl font-display font-bold text-foreground mb-6"
-            >
-              Study Smarter with{" "}
-              <span className="text-gradient">AI-Powered</span> Document Analysis
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
-            >
-              Upload your research papers, notes, and question papers. Get instant summaries, 
-              generate quizzes, create flashcards, and predict exam topics.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-wrap justify-center gap-4"
-            >
-              <Link to="/research">
-                <Button variant="hero" size="xl">
-                  <Upload className="w-5 h-5 mr-2" />
-                  Upload Documents
-                </Button>
-              </Link>
-              <Link to="/notes">
-                <Button variant="hero-outline" size="xl">
-                  <Zap className="w-5 h-5 mr-2" />
-                  Try Exam Assistant
-                </Button>
-              </Link>
-            </motion.div>
-
-            {/* Hero Illustration */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="mt-12"
-            >
-              <img
-                src={heroIllustration}
-                alt="AI-powered study platform illustration"
-                className="w-full max-w-3xl mx-auto rounded-2xl shadow-elevated"
-              />
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Quick Upload Section */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4">
+      {/* Hero Section with Parallax */}
+      <motion.section 
+        ref={heroRef}
+        style={{ opacity, scale }}
+        className="relative min-h-screen flex items-center justify-center px-4 pt-20"
+      >
+        <div className="max-w-7xl mx-auto text-center z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="max-w-2xl mx-auto"
+            transition={{ duration: 0.8 }}
+            className="mb-8"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-3">
-                Quick Upload
-              </h2>
-              <p className="text-muted-foreground">
-                Drop your documents here to get started immediately
-              </p>
-            </div>
-            <FileUpload />
+            <span className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-muted border-2 border-foreground/30 backdrop-blur-sm shadow-lg">
+              {/* <Sparkles className="w-4 h-4 text-foreground" /> */}
+              <span className="text-sm font-semibold text-foreground">Study Smarter</span>
+            </span>
           </motion.div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <motion.div
+          <motion.h1
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-6xl md:text-8xl lg:text-9xl font-display font-bold mb-8 leading-none"
+          >
+            YOUR
+            <span className="italic"> ESENCIA</span>
+          </motion.h1>
+
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="text-center mb-12"
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-              Everything You Need to Ace Your Exams
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Three powerful tools designed specifically for students
-            </p>
+            Transform your learning with AI-powered analysis, 
+            interactive quizzes, and intelligent exam predictions
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="flex flex-wrap justify-center gap-4"
+          >
+            <Link to="/research">
+              <Button variant="hero" size="xl" className="group">
+                <Upload className="w-5 h-5 mr-2" />
+                Get Started
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+            <Link to="/notes">
+              <Button variant="hero-outline" size="xl" className="group">
+                Explore Features
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {features.map((feature, index) => (
-              <FeatureCard
-                key={feature.title}
-                {...feature}
-                delay={0.6 + index * 0.1}
-              />
+          {/* Scroll Indicator */}
+          {/* <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 1 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2"
+          >
+            <motion.div
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-6 h-10 rounded-full border-2 border-foreground/30 flex items-start justify-center p-2"
+            >
+              <motion.div className="w-1.5 h-1.5 bg-foreground rounded-full" />
+            </motion.div>
+          </motion.div> */}
+        </div>
+      </motion.section>
+
+      {/* Stats Section */}
+      <section className="stats-section relative py-32 px-4 bg-foreground/5 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2 
+            className="text-4xl md:text-5xl font-display font-bold text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            Made by DIKESH PATEL using
+          </motion.h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+            {[
+              { value: "JS", label: "Documents Analyzed" },
+              { value: "HTML", label: "Active Students" },
+              { value: "Python", label: "Quizzes Generated" },
+              { value: "hehe", label: "Success Rate" },
+            ].map((stat, index) => (
+              <motion.div 
+                key={index} 
+                className="stat-item text-center"
+                whileHover={{ scale: 1.1, rotate: 2 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="text-5xl md:text-6xl font-display font-bold mb-3 text-foreground">
+                  {stat.value}
+                </div>
+                <div className="text-muted-foreground font-medium">{stat.label}</div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
-            >
-              {[
-                { value: "RAG", label: "Powered Analysis" },
-                { value: "AI", label: "Generated Quizzes" },
-                { value: "Smart", label: "Topic Prediction" },
-                { value: "Fast", label: "Document Processing" },
-              ].map((stat, index) => (
-                <div key={index}>
-                  <div className="text-3xl md:text-4xl font-display font-bold text-gradient mb-2">
-                    {stat.value}
+      {/* Interactive Features Showcase */}
+      <section className="relative py-32 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2 
+            className="text-4xl md:text-6xl font-display font-bold text-center mb-20"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            How It Works
+          </motion.h2>
+          
+          <div className="grid md:grid-cols-2 gap-8">
+            {[
+              {
+                step: "01",
+                title: "Upload Your Documents",
+                description: "Drag and drop research papers, notes, or question papers",
+                icon: Upload
+              },
+              {
+                step: "02",
+                title: "AI Analysis",
+                description: "Our advanced AI processes and understands your content",
+                icon: Sparkles
+              },
+              {
+                step: "03",
+                title: "Generate Materials",
+                description: "Get instant summaries, quizzes, and study guides",
+                icon: Zap
+              },
+              {
+                step: "04",
+                title: "Study Smarter",
+                description: "Use interactive tools to master your subjects",
+                icon: Brain
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                className="relative p-8 rounded-3xl bg-card border-2 border-border hover:border-foreground/50 transition-all group cursor-pointer"
+                initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ scale: 1.03, y: -5 }}
+              >
+                <div className="flex items-start gap-6">
+                  <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-foreground flex items-center justify-center text-background font-bold text-xl shadow-lg">
+                    {item.step}
                   </div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-display font-bold mb-3 group-hover:text-foreground transition-colors">
+                      {item.title}
+                    </h3>
+                    <p className="text-muted-foreground text-lg leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                  <item.icon className="w-10 h-10 text-muted-foreground/30 group-hover:text-foreground/50 transition-colors" />
                 </div>
-              ))}
-            </motion.div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="relative py-32 px-4 bg-foreground text-background overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-background blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-background blur-3xl" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-5xl md:text-7xl font-display font-bold mb-8 drop-shadow-lg">
+              Ready to Transform<br />Your Learning?
+            </h2>
+            <p className="text-xl md:text-2xl mb-12 text-background/90 drop-shadow">
+              Join thousands of students already studying smarter
+            </p>
+            <Link to="/research">
+              <Button 
+                variant="hero" 
+                size="xl" 
+                className="group bg-background text-foreground hover:bg-background/90 shadow-2xl hover:shadow-3xl border-0"
+              >
+                <Zap className="w-5 h-5 mr-2" />
+                Start Now - It's Free
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="py-8 border-t">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
+      <footer className="py-12 px-4 border-t border-foreground/10">
+        <div className="max-w-7xl mx-auto text-center">
+          <p className="text-muted-foreground">
             Built for students, by students. Study smarter, not harder.
           </p>
         </div>

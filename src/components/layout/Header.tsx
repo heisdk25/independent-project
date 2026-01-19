@@ -20,11 +20,11 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-soft group-hover:shadow-glow transition-shadow duration-300">
-              <BookOpen className="w-5 h-5 text-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center shadow-soft group-hover:shadow-card transition-shadow duration-300">
+              <BookOpen className="w-5 h-5 text-background" />
             </div>
             <span className="font-display font-bold text-xl text-foreground">
-              Study<span className="text-gradient">AI</span>
+              ESENCIA <span className="font-bold"></span>
             </span>
           </Link>
 
@@ -45,7 +45,7 @@ export const Header = () => {
                     {isActive && (
                       <motion.div
                         layoutId="activeTab"
-                        className="absolute inset-0 rounded-lg gradient-primary -z-10"
+                        className="absolute inset-0 rounded-lg bg-foreground -z-10"
                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                       />
                     )}

@@ -20,12 +20,6 @@ export const FeatureCard = ({
   gradient = "primary",
   delay = 0,
 }: FeatureCardProps) => {
-  const gradientClasses = {
-    primary: "gradient-primary",
-    secondary: "bg-secondary",
-    accent: "gradient-accent",
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -36,17 +30,17 @@ export const FeatureCard = ({
         <Card variant="interactive" className="h-full group">
           <CardHeader>
             <div
-              className={`w-14 h-14 rounded-2xl ${gradientClasses[gradient]} flex items-center justify-center shadow-card mb-4 group-hover:scale-110 transition-transform duration-300`}
+              className="w-14 h-14 rounded-2xl bg-foreground flex items-center justify-center shadow-card mb-4 group-hover:scale-110 transition-transform duration-300"
             >
-              <Icon className="w-7 h-7 text-primary-foreground" />
+              <Icon className="w-7 h-7 text-background" />
             </div>
-            <CardTitle className="group-hover:text-primary transition-colors">
+            <CardTitle className="group-hover:text-foreground transition-colors">
               {title}
             </CardTitle>
             <CardDescription className="text-base">{description}</CardDescription>
           </CardHeader>
           <CardContent>
-            <span className="text-sm font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-sm font-medium text-foreground flex items-center gap-1 group-hover:gap-2 transition-all">
               Get started
               <motion.span
                 initial={{ x: 0 }}
