@@ -184,14 +184,14 @@ const Index = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            Made by DIKESH PATEL using
+            Why Choose ESENCIA?
           </motion.h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
             {[
-              { value: "JS", label: "Documents Analyzed" },
-              { value: "HTML", label: "Active Students" },
-              { value: "Python", label: "Quizzes Generated" },
-              { value: "hehe", label: "Success Rate" },
+              { value: "Gemini API", label: "Uses gemini 2.5 pro" },
+              { value: "OCR", label: "Document Analysis" },
+              { value: "RAG Based", label: "Authentic Answers" },
+              { value: "Python", label: "Flask Backend" },
             ].map((stat, index) => (
               <motion.div 
                 key={index} 
